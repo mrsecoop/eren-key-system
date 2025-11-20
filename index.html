@@ -1,186 +1,30 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>EREN KEY PANEL</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { background:#0a0a0f; color:white; font-family:Arial; text-align:center; }
-        .box { width:90%; max-width:600px; margin:auto; padding:20px; background:#11131a; border-radius:10px; }
-        input, button, select { width:95%; padding:12px; margin:6px 0; border-radius:6px; border:none; }
-        button { background:#00ff9d; font-weight:bold; cursor:pointer; }
-        table { width:100%; border-collapse:collapse; margin-top:20px; }
-        th, td { border:1px solid #555; padding:8px; font-size:14px; word-break:break-word; }
-        th { background:#151922; }
-        .red { background:#ff4d4d; color:white; }
-        .yellow { background:#ffbb00; color:white; }
-    </style>
+<meta charset="UTF-8">
+<title>EREN Premium Key System</title>
+<link rel="stylesheet" href="style.css">
+<script defer src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+<script defer src="script.js"></script>
 </head>
+
 <body>
-
-<h1>EREN – FULL KEY SYSTEM PANEL</h1>
-
-<div id="loginBox" class="box">
-    <h2>Admin Login</h2>
-    <input type="password" id="adminPass" placeholder="Enter Password">
-    <button onclick="adminLogin()">Login</button>
-</div>
-
-<div id="panel" style="display:none">
+<h1>EREN Premium Key System</h1>
 
 <div class="box">
+
     <h2>Generate Key</h2>
-    <input id="prefix" placeholder="Prefix (Default: EREN)" value="EREN">
-    <input id="length" type="number" placeholder="Length (Default: 15)" value="15">
-    <input id="hours" type="number" placeholder="Expiry Hours (Default: 12)" value="12">
-    <button onclick="generateKey()">Generate Key</button>
-    <p id="genOut"></p>
-</div>
+    <button id="gen12">Generate 12 Hour Key</button>
 
-<div class="box">
-    <h2>Search Keys</h2>
-    <input id="searchBox" placeholder="Search key / device / status" oninput="renderTable()">
-</div>
+    <h2>Search Key</h2>
+    <input id="searchKey" placeholder="Search key...">
+    <div id="searchResult"></div>
 
-<div class="box">
     <h2>All Keys</h2>
-    <div id="keysTable"></div>
-</div>
+    <div id="allKeys"></div>
 
 </div>
 
-<script>
-const ADMIN_PASSWORD = "Secods@123";
-const RAW_URL = "https://raw.githubusercontent.com/mrsecoop/eren-key-system/main/keys.json";
-const PUT_URL = "https://api.github.com/repos/mrsecoop/eren-key-system/contents/keys.json";
-
-let keys = [];
-let sha = "";
-
-function adminLogin() {
-    let pass = document.getElementById("adminPass").value;
-    if(pass === ADMIN_PASSWORD){
-        document.getElementById("loginBox").style.display = "none";
-        document.getElementById("panel").style.display = "block";
-        loadKeys();
-    } else {
-        alert("Wrong Password!");
-    }
-}
-
-async function loadKeys(){
-    let res = await fetch(PUT_URL, {
-        method: "GET",
-        headers: {
-            "Accept":"application/vnd.github+json",
-            "Authorization":"Bearer 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"  <!-- TOKEN #1 -->
-        }
-    });
-
-    let data = await res.json();
-    sha = data.sha;
-    keys = JSON.parse(atob(data.content)).keys;
-    renderTable();
-}
-
-function saveKeys(){
-    fetch(PUT_URL, {
-        method:"PUT",
-        headers:{
-            "Accept":"application/vnd.github+json",
-            "Authorization":"Bearer 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"  <!-- TOKEN #2 -->
-        },
-        body:JSON.stringify({
-            message:"Updated keys",
-            content:btoa(JSON.stringify({keys:keys}, null, 2)),
-            sha:sha
-        })
-    }).then(()=>{ loadKeys(); });
-}
-
-function generateKey(){
-    let prefix = document.getElementById("prefix").value || "EREN";
-    let length = Number(document.getElementById("length").value) || 15;
-    let hours = Number(document.getElementById("hours").value) || 12;
-
-    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let out = prefix + "-";
-    for(let i=0;i<length;i++){
-        out += chars[Math.floor(Math.random()*chars.length)];
-    }
-
-    let expire = Date.now() + hours*3600000;
-
-    keys.push({
-        key: out,
-        device: "",
-        created: Date.now(),
-        expire: expire,
-        status: "active"
-    });
-
-    saveKeys();
-    document.getElementById("genOut").innerText = "Generated: " + out;
-}
-
-function deleteKey(k){
-    keys = keys.filter(x => x.key !== k);
-    saveKeys();
-}
-
-function banKey(k){
-    let f = keys.find(x => x.key === k);
-    f.status = "banned";
-    saveKeys();
-}
-
-function unbanKey(k){
-    let f = keys.find(x => x.key === k);
-    f.status = "active";
-    saveKeys();
-}
-
-function extendKey(k){
-    let f = keys.find(x => x.key === k);
-    f.expire = Date.now() + 12*3600000;
-    saveKeys();
-}
-
-function renderTable(){
-    let s = document.getElementById("searchBox").value.toLowerCase();
-    let html = `
-        <table>
-        <tr>
-            <th>Key</th><th>Device</th><th>Status</th><th>Expires</th><th>Actions</th>
-        </tr>
-    `;
-
-    keys.filter(k => 
-        k.key.toLowerCase().includes(s) ||
-        k.device.toLowerCase().includes(s) ||
-        k.status.toLowerCase().includes(s)
-    ).forEach(k=>{
-        html += `
-            <tr>
-                <td>${k.key}</td>
-                <td>${k.device || "-"}</td>
-                <td>${k.status}</td>
-                <td>${new Date(k.expire).toLocaleString()}</td>
-                <td>
-                    <button class="yellow" onclick="extendKey('${k.key}')">Extend</button>
-                    <button class="red" onclick="deleteKey('${k.key}')">Delete</button>
-                    ${(k.status==="active") 
-                        ? `<button class="red" onclick="banKey('${k.key}')">Ban</button>`
-                        : `<button onclick="unbanKey('${k.key}')">Unban</button>`}
-                </td>
-            </tr>
-        `;
-    });
-
-    html += "</table>";
-
-    document.getElementById("keysTable").innerHTML = html;
-}
-
-</script>
 </body>
 </html>
