@@ -1,1 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>EREN Key System Admin Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body {
+    background:#0D0D12;
+    color:white;
+    font-family:Arial;
+    padding:20px;
+}
+.box {
+    background:#1a1a24;
+    padding:20px;
+    border-radius:10px;
+    border:2px solid #00ff99;
+    max-width:500px;
+    margin:auto;
+}
+input, button {
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border-radius:8px;
+    border:none;
+    font-size:17px;
+}
+button { background:#00ff99; font-weight:bold; }
+.key-box {
+    background:#111;
+    padding:10px;
+    border-radius:6px;
+    margin-top:10px;
+    border:1px solid #00ff99;
+}
+</style>
+</head>
 
+<body>
+
+<h2 align="center">EREN Premium Key System</h2>
+
+<div class="box" id="loginBox">
+    <h3>Admin Login</h3>
+    <input id="pass" placeholder="Enter Admin Password" type="password">
+    <button onclick="login()">LOGIN</button>
+</div>
+
+<div class="box" id="panel" style="display:none;">
+    <h3>Generate Key</h3>
+    <button onclick="generateKey()">Generate 12 Hour Key</button>
+
+    <h3 style="margin-top:30px;">Search Key</h3>
+    <input id="search" placeholder="Search key..." oninput="searchKeys()">
+
+    <h3 style="margin-top:30px;">All Keys</h3>
+    <div id="keys"></div>
+</div>
+
+<script>
+const PASSWORD = "Secods@123";
+const RAW_URL = "https://raw.githubusercontent.com/mrsecoop/eren-key-system/main/keys.json";
+const SAVE_URL = "https://api.github.com/repos/mrsecoop/eren-key-system/contents/keys.json";
+let jsonData = {};
+
+function login(){
+    if(document.getElementById("pass").value === PASSWORD){
+        document.getElementById("loginBox").style.display="none";
+        document.getElementById("panel").style.display="block";
+        loadData();
+    } else {
+        alert("Wrong password!");
+    }
+}
+
+async function loadData(){
+    const res = await fetch(RAW_URL);
+    jsonData = await res.json();
+    display();
+}
+
+function display(){
+    let box = document.getElementById("keys");
+    box.innerHTML = "";
+
+    Object.keys(jsonData.keys).forEach(k => {
+        let data = jsonData.keys[k];
+        let exp = new Date(data.expires * 1000).toLocaleString();
+
+        box.innerHTML += `
+            <div class='key-box'>
+                <b>${k}</b><br>
+                HWID: ${data.hwid}<br>
+                Expires: ${exp}<br>
+                <button onclick="deleteKey('${k}')">Delete</button>
+            </div>
+        `;
+    });
+}
+
+function searchKeys(){
+    let s = document.getElementById("search").value.toLowerCase();
+    let box = document.getElementById("keys");
+    box.innerHTML = "";
+
+    Object.keys(jsonData.keys).forEach(k => {
+        if(!k.toLowerCase().includes(s)) return;
+
+        let data = jsonData.keys[k];
+        let exp = new Date(data.expires * 1000).toLocaleString();
+
+        box.innerHTML += `
+            <div class='key-box'>
+                <b>${k}</b><br>
+                HWID: ${data.hwid}<br>
+                Expires: ${exp}<br>
+                <button onclick="deleteKey('${k}')">Delete</button>
+            </div>
+        `;
+    });
+}
+
+function generateRandomKey(){
+    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = "";
+    for(let i=0;i<15;i++){
+        result += chars.charAt(Math.floor(Math.random()*chars.length));
+    }
+    return "EREN-" + result;
+}
+
+function generateKey(){
+    let key = generateRandomKey();
+    let expiry = Math.floor(Date.now()/1000) + (12 * 60 * 60);
+
+    jsonData.keys[key] = {
+        hwid: "",
+        expires: expiry
+    };
+
+    save();
+}
+
+function deleteKey(k){
+    delete jsonData.keys[k];
+    save();
+}
+
+async function save(){
+    let content = btoa(JSON.stringify(jsonData, null, 2));
+
+    let oldFile = await fetch(SAVE_URL, {
+        headers: { "Authorization": "Bearer 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" }
+    });
+    let oldData = await oldFile.json();
+
+    fetch(SAVE_URL, {
+        method:"PUT",
+        headers:{
+            "Content-Type":"application/json",
+            "Authorization":"Bearer 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"
+        },
+        body:JSON.stringify({
+            message:"Update keys.json",
+            content:content,
+            sha:oldData.sha
+        })
+    });
+
+    alert("Saved!");
+    loadData();
+}
+</script>
+</body>
+</html>
