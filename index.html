@@ -1,176 +1,186 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>EREN Key System Admin Panel</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body {
-    background:#0D0D12;
-    color:white;
-    font-family:Arial;
-    padding:20px;
-}
-.box {
-    background:#1a1a24;
-    padding:20px;
-    border-radius:10px;
-    border:2px solid #00ff99;
-    max-width:500px;
-    margin:auto;
-}
-input, button {
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border-radius:8px;
-    border:none;
-    font-size:17px;
-}
-button { background:#00ff99; font-weight:bold; }
-.key-box {
-    background:#111;
-    padding:10px;
-    border-radius:6px;
-    margin-top:10px;
-    border:1px solid #00ff99;
-}
-</style>
+    <title>EREN KEY PANEL</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { background:#0a0a0f; color:white; font-family:Arial; text-align:center; }
+        .box { width:90%; max-width:600px; margin:auto; padding:20px; background:#11131a; border-radius:10px; }
+        input, button, select { width:95%; padding:12px; margin:6px 0; border-radius:6px; border:none; }
+        button { background:#00ff9d; font-weight:bold; cursor:pointer; }
+        table { width:100%; border-collapse:collapse; margin-top:20px; }
+        th, td { border:1px solid #555; padding:8px; font-size:14px; word-break:break-word; }
+        th { background:#151922; }
+        .red { background:#ff4d4d; color:white; }
+        .yellow { background:#ffbb00; color:white; }
+    </style>
 </head>
-
 <body>
 
-<h2 align="center">EREN Premium Key System</h2>
+<h1>EREN – FULL KEY SYSTEM PANEL</h1>
 
-<div class="box" id="loginBox">
-    <h3>Admin Login</h3>
-    <input id="pass" placeholder="Enter Admin Password" type="password">
-    <button onclick="login()">LOGIN</button>
+<div id="loginBox" class="box">
+    <h2>Admin Login</h2>
+    <input type="password" id="adminPass" placeholder="Enter Password">
+    <button onclick="adminLogin()">Login</button>
 </div>
 
-<div class="box" id="panel" style="display:none;">
-    <h3>Generate Key</h3>
-    <button onclick="generateKey()">Generate 12 Hour Key</button>
+<div id="panel" style="display:none">
 
-    <h3 style="margin-top:30px;">Search Key</h3>
-    <input id="search" placeholder="Search key..." oninput="searchKeys()">
+<div class="box">
+    <h2>Generate Key</h2>
+    <input id="prefix" placeholder="Prefix (Default: EREN)" value="EREN">
+    <input id="length" type="number" placeholder="Length (Default: 15)" value="15">
+    <input id="hours" type="number" placeholder="Expiry Hours (Default: 12)" value="12">
+    <button onclick="generateKey()">Generate Key</button>
+    <p id="genOut"></p>
+</div>
 
-    <h3 style="margin-top:30px;">All Keys</h3>
-    <div id="keys"></div>
+<div class="box">
+    <h2>Search Keys</h2>
+    <input id="searchBox" placeholder="Search key / device / status" oninput="renderTable()">
+</div>
+
+<div class="box">
+    <h2>All Keys</h2>
+    <div id="keysTable"></div>
+</div>
+
 </div>
 
 <script>
-const PASSWORD = "Secods@123";
+const ADMIN_PASSWORD = "Secods@123";
 const RAW_URL = "https://raw.githubusercontent.com/mrsecoop/eren-key-system/main/keys.json";
-const SAVE_URL = "https://api.github.com/repos/mrsecoop/eren-key-system/contents/keys.json";
-let jsonData = {};
+const PUT_URL = "https://api.github.com/repos/mrsecoop/eren-key-system/contents/keys.json";
 
-function login(){
-    if(document.getElementById("pass").value === PASSWORD){
-        document.getElementById("loginBox").style.display="none";
-        document.getElementById("panel").style.display="block";
-        loadData();
+let keys = [];
+let sha = "";
+
+function adminLogin() {
+    let pass = document.getElementById("adminPass").value;
+    if(pass === ADMIN_PASSWORD){
+        document.getElementById("loginBox").style.display = "none";
+        document.getElementById("panel").style.display = "block";
+        loadKeys();
     } else {
-        alert("Wrong password!");
+        alert("Wrong Password!");
     }
 }
 
-async function loadData(){
-    const res = await fetch(RAW_URL);
-    jsonData = await res.json();
-    display();
-}
-
-function display(){
-    let box = document.getElementById("keys");
-    box.innerHTML = "";
-
-    Object.keys(jsonData.keys).forEach(k => {
-        let data = jsonData.keys[k];
-        let exp = new Date(data.expires * 1000).toLocaleString();
-
-        box.innerHTML += `
-            <div class='key-box'>
-                <b>${k}</b><br>
-                HWID: ${data.hwid}<br>
-                Expires: ${exp}<br>
-                <button onclick="deleteKey('${k}')">Delete</button>
-            </div>
-        `;
+async function loadKeys(){
+    let res = await fetch(PUT_URL, {
+        method: "GET",
+        headers: {
+            "Accept":"application/vnd.github+json",
+            "Authorization":"Bearer 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"  <!-- TOKEN #1 -->
+        }
     });
+
+    let data = await res.json();
+    sha = data.sha;
+    keys = JSON.parse(atob(data.content)).keys;
+    renderTable();
 }
 
-function searchKeys(){
-    let s = document.getElementById("search").value.toLowerCase();
-    let box = document.getElementById("keys");
-    box.innerHTML = "";
-
-    Object.keys(jsonData.keys).forEach(k => {
-        if(!k.toLowerCase().includes(s)) return;
-
-        let data = jsonData.keys[k];
-        let exp = new Date(data.expires * 1000).toLocaleString();
-
-        box.innerHTML += `
-            <div class='key-box'>
-                <b>${k}</b><br>
-                HWID: ${data.hwid}<br>
-                Expires: ${exp}<br>
-                <button onclick="deleteKey('${k}')">Delete</button>
-            </div>
-        `;
-    });
-}
-
-function generateRandomKey(){
-    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-    let result = "";
-    for(let i=0;i<15;i++){
-        result += chars.charAt(Math.floor(Math.random()*chars.length));
-    }
-    return "EREN-" + result;
+function saveKeys(){
+    fetch(PUT_URL, {
+        method:"PUT",
+        headers:{
+            "Accept":"application/vnd.github+json",
+            "Authorization":"Bearer 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"  <!-- TOKEN #2 -->
+        },
+        body:JSON.stringify({
+            message:"Updated keys",
+            content:btoa(JSON.stringify({keys:keys}, null, 2)),
+            sha:sha
+        })
+    }).then(()=>{ loadKeys(); });
 }
 
 function generateKey(){
-    let key = generateRandomKey();
-    let expiry = Math.floor(Date.now()/1000) + (12 * 60 * 60);
+    let prefix = document.getElementById("prefix").value || "EREN";
+    let length = Number(document.getElementById("length").value) || 15;
+    let hours = Number(document.getElementById("hours").value) || 12;
 
-    jsonData.keys[key] = {
-        hwid: "",
-        expires: expiry
-    };
+    let chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let out = prefix + "-";
+    for(let i=0;i<length;i++){
+        out += chars[Math.floor(Math.random()*chars.length)];
+    }
 
-    save();
+    let expire = Date.now() + hours*3600000;
+
+    keys.push({
+        key: out,
+        device: "",
+        created: Date.now(),
+        expire: expire,
+        status: "active"
+    });
+
+    saveKeys();
+    document.getElementById("genOut").innerText = "Generated: " + out;
 }
 
 function deleteKey(k){
-    delete jsonData.keys[k];
-    save();
+    keys = keys.filter(x => x.key !== k);
+    saveKeys();
 }
 
-async function save(){
-    let content = btoa(JSON.stringify(jsonData, null, 2));
-
-    let oldFile = await fetch(SAVE_URL, {
-        headers: { "Authorization": "Bearer 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" }
-    });
-    let oldData = await oldFile.json();
-
-    fetch(SAVE_URL, {
-        method:"PUT",
-        headers:{
-            "Content-Type":"application/json",
-            "Authorization":"Bearer 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"
-        },
-        body:JSON.stringify({
-            message:"Update keys.json",
-            content:content,
-            sha:oldData.sha
-        })
-    });
-
-    alert("Saved!");
-    loadData();
+function banKey(k){
+    let f = keys.find(x => x.key === k);
+    f.status = "banned";
+    saveKeys();
 }
+
+function unbanKey(k){
+    let f = keys.find(x => x.key === k);
+    f.status = "active";
+    saveKeys();
+}
+
+function extendKey(k){
+    let f = keys.find(x => x.key === k);
+    f.expire = Date.now() + 12*3600000;
+    saveKeys();
+}
+
+function renderTable(){
+    let s = document.getElementById("searchBox").value.toLowerCase();
+    let html = `
+        <table>
+        <tr>
+            <th>Key</th><th>Device</th><th>Status</th><th>Expires</th><th>Actions</th>
+        </tr>
+    `;
+
+    keys.filter(k => 
+        k.key.toLowerCase().includes(s) ||
+        k.device.toLowerCase().includes(s) ||
+        k.status.toLowerCase().includes(s)
+    ).forEach(k=>{
+        html += `
+            <tr>
+                <td>${k.key}</td>
+                <td>${k.device || "-"}</td>
+                <td>${k.status}</td>
+                <td>${new Date(k.expire).toLocaleString()}</td>
+                <td>
+                    <button class="yellow" onclick="extendKey('${k.key}')">Extend</button>
+                    <button class="red" onclick="deleteKey('${k.key}')">Delete</button>
+                    ${(k.status==="active") 
+                        ? `<button class="red" onclick="banKey('${k.key}')">Ban</button>`
+                        : `<button onclick="unbanKey('${k.key}')">Unban</button>`}
+                </td>
+            </tr>
+        `;
+    });
+
+    html += "</table>";
+
+    document.getElementById("keysTable").innerHTML = html;
+}
+
 </script>
 </body>
 </html>
